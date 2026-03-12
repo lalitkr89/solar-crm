@@ -19,59 +19,59 @@ callers = ["Ravi", "Aman", "Shivam"]
 # ---------------- DISPOSITIONS ----------------
 
 not_connected_dispositions = [
-"Not Connected 1st-Attempt",
-"Not Connected 2nd-Attempt",
-"Not Connected 3rd-Attempt",
-"Not Connected 4th-Attempt",
-"Invalid/Wrong Number",
+    "Not Connected 1st-Attempt",
+    "Not Connected 2nd-Attempt",
+    "Not Connected 3rd-Attempt",
+    "Not Connected 4th-Attempt",
+    "Invalid/Wrong Number",
 ]
 
 connected_dispositions = [
-"Meeting Scheduled (BD)",
-"Meet Later (Qualified)",
-"Call Later (Interested)",
-"Call Later (Under Construction)",
-"Language Barrier",
-"Non Qualified - Roof Area Insufficient",
-"Non Qualified - Bill Amount Insufficient",
-"Non Qualified - No Roof Ownership",
-"Non Qualified - Not Govt Meter",
-"Non Qualified - Meter Connection Not Yet Available",
-"Not Serviceable - Offgrid Enquiry",
-"Not Serviceable - SS not in location",
-"Not Interested in Solar",
-"Not Interested in Solar - Price Issue",
-"Housing Society Enquiry",
-"Commercial Lead",
-"SolarPro Enquiry",
+    "Meeting Scheduled (BD)",
+    "Meet Later (Qualified)",
+    "Call Later (Interested)",
+    "Call Later (Under Construction)",
+    "Language Barrier",
+    "Non Qualified - Roof Area Insufficient",
+    "Non Qualified - Bill Amount Insufficient",
+    "Non Qualified - No Roof Ownership",
+    "Non Qualified - Not Govt Meter",
+    "Non Qualified - Meter Connection Not Yet Available",
+    "Not Serviceable - Offgrid Enquiry",
+    "Not Serviceable - SS not in location",
+    "Not Interested in Solar",
+    "Not Interested in Solar - Price Issue",
+    "Housing Society Enquiry",
+    "Commercial Lead",
+    "SolarPro Enquiry",
 ]
 
 # ---------------- PHONE CLEAN ----------------
 
+
 def clean_phone(phone):
-phone = phone.strip().replace(" ", "")
+    phone = phone.strip().replace(" ", "")
 
-```
-if phone.startswith("+91"):
-    phone = phone[3:]
+    if phone.startswith("+91"):
+        phone = phone[3:]
 
-if phone.startswith("0"):
-    phone = phone[1:]
+    if phone.startswith("0"):
+        phone = phone[1:]
 
-return phone
-```
+    return phone
+
 
 # ---------------- ROUND ROBIN ----------------
 
+
 def get_next_caller():
 
-```
-count = supabase.table("leads").select("id").execute()
+    count = supabase.table("leads").select("id").execute()
 
-total = len(count.data) if count.data else 0
+    total = len(count.data) if count.data else 0
 
-return callers[total % len(callers)]
-```
+    return callers[total % len(callers)]
+
 
 # ---------------- PHONE INPUT ----------------
 
@@ -82,15 +82,14 @@ existing_lead = None
 
 if phone.isdigit() and len(phone) == 10:
 
-```
-check = supabase.table("leads").select("*").eq("phone", phone).execute()
+    check = supabase.table("leads").select("*").eq("phone", phone).execute()
 
-if check.data:
+    if check.data:
 
-    existing_lead = check.data[0]
+        existing_lead = check.data[0]
 
-    st.warning("⚠ Existing lead found. Edit details and click Save.")
-```
+        st.warning("⚠ Existing lead found. Edit details and click Save.")
+
 
 # ---------------- BASIC FIELDS ----------------
 
@@ -99,34 +98,43 @@ city = st.text_input("City")
 
 call_status = st.selectbox("Call Connection Status", ["Not Connected", "Connected"])
 
+
 # ---------------- CALLER ASSIGN ----------------
 
 if city.lower() in ["kanpur", "lucknow"]:
-assigned_caller = get_next_caller()
-st.success(f"Auto Assigned to {assigned_caller}")
+
+    assigned_caller = get_next_caller()
+    st.success(f"Auto Assigned to {assigned_caller}")
+
 else:
-assigned_caller = st.selectbox("Assign Caller", callers)
+
+    assigned_caller = st.selectbox("Assign Caller", callers)
+
 
 # ---------------- DISPOSITION ----------------
 
 if call_status == "Not Connected":
-disposition = st.selectbox("Pre Sales Disposition", not_connected_dispositions)
+
+    disposition = st.selectbox("Pre Sales Disposition", not_connected_dispositions)
+
 else:
-disposition = st.selectbox("Pre Sales Disposition", connected_dispositions)
+
+    disposition = st.selectbox("Pre Sales Disposition", connected_dispositions)
+
 
 # ---------------- TIME SLOTS ----------------
 
 time_slots = [
-"09:00-10:00",
-"10:00-11:00",
-"11:00-12:00",
-"12:00-13:00",
-"13:00-14:00",
-"14:00-15:00",
-"15:00-16:00",
-"16:00-17:00",
-"17:00-18:00",
-"18:00-19:00",
+    "09:00-10:00",
+    "10:00-11:00",
+    "11:00-12:00",
+    "12:00-13:00",
+    "13:00-14:00",
+    "14:00-15:00",
+    "15:00-16:00",
+    "16:00-17:00",
+    "17:00-18:00",
+    "18:00-19:00",
 ]
 
 meeting_date = None
@@ -136,97 +144,95 @@ meeting_address = None
 callback_date = None
 callback_slot = None
 
+
 # ---------------- MEETING ----------------
 
 if call_status == "Connected" and disposition == "Meeting Scheduled (BD)":
 
-```
-st.subheader("📅 Meeting Details")
+    st.subheader("📅 Meeting Details")
 
-meeting_date_raw = st.date_input("Meeting Date")
+    meeting_date_raw = st.date_input("Meeting Date")
 
-meeting_slot = st.selectbox("Meeting Time Slot", time_slots)
+    meeting_slot = st.selectbox("Meeting Time Slot", time_slots)
 
-meeting_address = st.text_area("Meeting Address")
+    meeting_address = st.text_area("Meeting Address")
 
-meeting_date = meeting_date_raw.strftime("%d-%b-%y")
-```
+    meeting_date = meeting_date_raw.strftime("%d-%b-%y")
+
 
 # ---------------- CALLBACK ----------------
 
 if call_status == "Connected" and "Call Later" in disposition:
 
-```
-st.subheader("⏳ Callback Details")
+    st.subheader("⏳ Callback Details")
 
-callback_date_raw = st.date_input("Callback Date")
+    callback_date_raw = st.date_input("Callback Date")
 
-callback_slot = st.selectbox("Callback Time Slot", time_slots)
+    callback_slot = st.selectbox("Callback Time Slot", time_slots)
 
-callback_date = callback_date_raw.strftime("%d-%b-%y")
-```
+    callback_date = callback_date_raw.strftime("%d-%b-%y")
+
 
 # ---------------- REMARKS ----------------
 
 remarks = st.text_area("Remarks")
 
+
 # ---------------- SAVE ----------------
 
 if st.button("Save Lead"):
 
-```
-if not phone.isdigit():
-    st.error("Mobile must contain only digits.")
-    st.stop()
+    if not phone.isdigit():
+        st.error("Mobile must contain only digits.")
+        st.stop()
 
-if len(phone) != 10:
-    st.error("Mobile must be exactly 10 digits.")
-    st.stop()
+    if len(phone) != 10:
+        st.error("Mobile must be exactly 10 digits.")
+        st.stop()
 
-existing = supabase.table("leads").select("*").eq("phone", phone).execute()
+    existing = supabase.table("leads").select("*").eq("phone", phone).execute()
 
-old_data = existing.data[0] if existing.data else None
+    old_data = existing.data[0] if existing.data else None
 
-data = {
-    "name": name,
-    "phone": phone,
-    "city": city,
-    "call_status": call_status,
-    "disposition": disposition,
-    "meeting_date": meeting_date if meeting_date else None,
-    "meeting_slot": meeting_slot if meeting_slot else None,
-    "meeting_address": meeting_address if meeting_address else None,
-    "callback_date": callback_date if callback_date else None,
-    "callback_slot": callback_slot if callback_slot else None,
-    "assigned_to": assigned_caller,
-    "remarks": remarks,
-    "created_at": datetime.now().isoformat(),
-}
+    data = {
+        "name": name,
+        "phone": phone,
+        "city": city,
+        "call_status": call_status,
+        "disposition": disposition,
+        "meeting_date": meeting_date if meeting_date else None,
+        "meeting_slot": meeting_slot if meeting_slot else None,
+        "meeting_address": meeting_address if meeting_address else None,
+        "callback_date": callback_date if callback_date else None,
+        "callback_slot": callback_slot if callback_slot else None,
+        "assigned_to": assigned_caller,
+        "remarks": remarks,
+        "created_at": datetime.now().isoformat(),
+    }
 
-response = supabase.table("leads").upsert(data, on_conflict="phone").execute()
+    response = supabase.table("leads").upsert(data, on_conflict="phone").execute()
 
-if response.data:
+    if response.data:
 
-    lead_id = response.data[0]["id"]
+        lead_id = response.data[0]["id"]
 
-    if old_data:
+        if old_data:
 
-        for field in data.keys():
+            for field in data.keys():
 
-            old_val = str(old_data.get(field))
-            new_val = str(data.get(field))
+                old_val = str(old_data.get(field))
+                new_val = str(data.get(field))
 
-            if old_val != new_val:
+                if old_val != new_val:
 
-                supabase.table("lead_history").insert(
-                    {
-                        "lead_id": lead_id,
-                        "updated_field": field,
-                        "old_value": old_val,
-                        "new_value": new_val,
-                    }
-                ).execute()
+                    supabase.table("lead_history").insert(
+                        {
+                            "lead_id": lead_id,
+                            "updated_field": field,
+                            "old_value": old_val,
+                            "new_value": new_val,
+                        }
+                    ).execute()
 
-    st.success("✅ Lead Saved Successfully")
-    st.rerun()
-```
+        st.success("✅ Lead Saved Successfully")
+        st.rerun()
