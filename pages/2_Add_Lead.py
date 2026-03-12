@@ -50,6 +50,10 @@ connected_dispositions = [
 
 
 def clean_phone(phone):
+
+    if not phone:
+        return ""
+
     phone = phone.strip().replace(" ", "")
 
     if phone.startswith("+91"):
@@ -66,11 +70,12 @@ def clean_phone(phone):
 
 def get_next_caller():
 
-    count = supabase.table("leads").select("id").execute()
-
-    total = len(count.data) if count.data else 0
-
-    return callers[total % len(callers)]
+    try:
+        count = supabase.table("leads").select("id").execute()
+        total = len(count.data) if count.data else 0
+        return callers[total % len(callers)]
+    except:
+        return callers[0]
 
 
 # ---------------- PHONE INPUT ----------------
@@ -82,13 +87,17 @@ existing_lead = None
 
 if phone.isdigit() and len(phone) == 10:
 
-    check = supabase.table("leads").select("*").eq("phone", phone).execute()
+    try:
+        check = supabase.table("leads").select("*").eq("phone", phone).execute()
 
-    if check.data:
+        if check.data:
 
-        existing_lead = check.data[0]
+            existing_lead = check.data[0]
 
-        st.warning("⚠ Existing lead found. Edit details and click Save.")
+            st.warning("⚠ Existing lead found. Edit details and click Save.")
+
+    except Exception as e:
+        st.error(e)
 
 
 # ---------------- BASIC FIELDS ----------------
@@ -97,7 +106,6 @@ name = st.text_input("Customer Name")
 city = st.text_input("City")
 
 call_status = st.selectbox("Call Connection Status", ["Not Connected", "Connected"])
-
 
 # ---------------- CALLER ASSIGN ----------------
 
@@ -110,7 +118,6 @@ else:
 
     assigned_caller = st.selectbox("Assign Caller", callers)
 
-
 # ---------------- DISPOSITION ----------------
 
 if call_status == "Not Connected":
@@ -120,7 +127,6 @@ if call_status == "Not Connected":
 else:
 
     disposition = st.selectbox("Pre Sales Disposition", connected_dispositions)
-
 
 # ---------------- TIME SLOTS ----------------
 
@@ -144,7 +150,6 @@ meeting_address = None
 callback_date = None
 callback_slot = None
 
-
 # ---------------- MEETING ----------------
 
 if call_status == "Connected" and disposition == "Meeting Scheduled (BD)":
@@ -157,8 +162,7 @@ if call_status == "Connected" and disposition == "Meeting Scheduled (BD)":
 
     meeting_address = st.text_area("Meeting Address")
 
-    meeting_date = meeting_date_raw.strftime("%d-%b-%y")
-
+    meeting_date = meeting_date_raw.isoformat()
 
 # ---------------- CALLBACK ----------------
 
@@ -170,13 +174,11 @@ if call_status == "Connected" and "Call Later" in disposition:
 
     callback_slot = st.selectbox("Callback Time Slot", time_slots)
 
-    callback_date = callback_date_raw.strftime("%d-%b-%y")
-
+    callback_date = callback_date_raw.isoformat()
 
 # ---------------- REMARKS ----------------
 
 remarks = st.text_area("Remarks")
-
 
 # ---------------- SAVE ----------------
 
@@ -190,49 +192,56 @@ if st.button("Save Lead"):
         st.error("Mobile must be exactly 10 digits.")
         st.stop()
 
-    existing = supabase.table("leads").select("*").eq("phone", phone).execute()
+    try:
 
-    old_data = existing.data[0] if existing.data else None
+        existing = supabase.table("leads").select("*").eq("phone", phone).execute()
 
-    data = {
-        "name": name,
-        "phone": phone,
-        "city": city,
-        "call_status": call_status,
-        "disposition": disposition,
-        "meeting_date": meeting_date if meeting_date else None,
-        "meeting_slot": meeting_slot if meeting_slot else None,
-        "meeting_address": meeting_address if meeting_address else None,
-        "callback_date": callback_date if callback_date else None,
-        "callback_slot": callback_slot if callback_slot else None,
-        "assigned_to": assigned_caller,
-        "remarks": remarks,
-        "created_at": datetime.now().isoformat(),
-    }
+        old_data = existing.data[0] if existing.data else None
 
-    response = supabase.table("leads").upsert(data, on_conflict="phone").execute()
+        data = {
+            "name": name,
+            "phone": phone,
+            "city": city,
+            "call_status": call_status,
+            "disposition": disposition,
+            "meeting_date": meeting_date if meeting_date else None,
+            "meeting_slot": meeting_slot if meeting_slot else None,
+            "meeting_address": meeting_address if meeting_address else None,
+            "callback_date": callback_date if callback_date else None,
+            "callback_slot": callback_slot if callback_slot else None,
+            "assigned_to": None,
+            "remarks": remarks,
+            "created_at": datetime.now().isoformat(),
+        }
 
-    if response.data:
+        response = supabase.table("leads").upsert(data, on_conflict="phone").execute()
 
-        lead_id = response.data[0]["id"]
+        if response.data:
 
-        if old_data:
+            lead_id = response.data[0]["id"]
 
-            for field in data.keys():
+            if old_data:
 
-                old_val = str(old_data.get(field))
-                new_val = str(data.get(field))
+                for field in data.keys():
 
-                if old_val != new_val:
+                    old_val = str(old_data.get(field))
+                    new_val = str(data.get(field))
 
-                    supabase.table("lead_history").insert(
-                        {
-                            "lead_id": lead_id,
-                            "updated_field": field,
-                            "old_value": old_val,
-                            "new_value": new_val,
-                        }
-                    ).execute()
+                    if old_val != new_val:
 
-        st.success("✅ Lead Saved Successfully")
-        st.rerun()
+                        supabase.table("lead_history").insert(
+                            {
+                                "lead_id": lead_id,
+                                "updated_field": field,
+                                "old_value": old_val,
+                                "new_value": new_val,
+                            }
+                        ).execute()
+
+            st.success("✅ Lead Saved Successfully")
+            st.rerun()
+
+    except Exception as e:
+
+        st.error("Error saving lead")
+        st.write(e)
