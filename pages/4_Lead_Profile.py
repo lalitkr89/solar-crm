@@ -1,8 +1,15 @@
 import streamlit as st
 import pandas as pd
+import time
 from supabase import create_client
 
-st.set_page_config(page_title="Lead Profile", layout="wide")
+phone = st.session_state.get("selected_lead")
+
+if not phone:
+    st.warning("No lead selected")
+    st.stop()
+
+st.set_page_config(page_title="Lead Details", layout="wide")
 
 # -------- SUPABASE --------
 
@@ -78,6 +85,35 @@ time_slots = [
     "18:00 - 19:00",
 ]
 
+# -------- GET SELECTED LEAD --------
+
+phone = st.session_state.get("selected_lead")
+
+if not phone:
+    st.warning("No lead selected.")
+    st.stop()
+
+# -------- FETCH LEAD --------
+
+res = supabase.table("leads").select("*").eq("phone", phone).execute()
+
+df = pd.DataFrame(res.data)
+
+if df.empty:
+    st.error("Lead not found.")
+    st.stop()
+
+lead = df.iloc[0]
+
+# -------- LEAD TIMER --------
+
+if "lead_start_time" not in st.session_state:
+    st.session_state.lead_start_time = time.time()
+
+time_spent = int(time.time() - st.session_state.lead_start_time)
+
+st.info(f"⏱ Time spent on this lead: {time_spent} seconds")
+
 # -------- EDIT LEAD DIALOG --------
 
 
@@ -150,6 +186,7 @@ def edit_lead_dialog(lead):
             "callback_date": callback_date.isoformat() if callback_date else None,
             "callback_slot": callback_slot,
             "remarks": new_remarks,
+            "lead_status": "processed",
         }
 
         supabase.table("leads").update(new_data).eq("id", lead["id"]).execute()
@@ -157,35 +194,30 @@ def edit_lead_dialog(lead):
         log_history(old_data, new_data, lead["id"])
 
         st.success("Lead Updated Successfully")
-        st.rerun()
 
+        # -------- RESET TIMER --------
+        st.session_state.lead_start_time = time.time()
 
-# -------- GET SELECTED LEAD --------
+        # -------- LOAD NEXT LEAD --------
+        next_lead = (
+            supabase.table("leads")
+            .select("*")
+            .eq("lead_status", "open")
+            .limit(1)
+            .execute()
+        )
 
-phone = st.session_state.get("selected_lead")
+        if next_lead.data:
+            st.session_state.selected_lead = next_lead.data[0]["phone"]
+            st.rerun()
 
-if not phone:
-    st.warning("No lead selected.")
-    st.stop()
-
-# -------- FETCH LEAD --------
-
-res = supabase.table("leads").select("*").eq("phone", phone).execute()
-
-df = pd.DataFrame(res.data)
-
-if df.empty:
-    st.error("Lead not found.")
-    st.stop()
-
-lead = df.iloc[0]
 
 # -------- TITLE + ACTION BAR --------
 
 header_left, header_right = st.columns([1, 3], vertical_alignment="center")
 
 with header_left:
-    st.markdown("### 👤 Lead Profile")
+    st.markdown("### 👤 Lead Details")
 
 with header_right:
 
@@ -230,62 +262,24 @@ with header_right:
 
 # -------- LEADCARD --------
 
-st.markdown("### Lead Details")
 
-st.markdown(
-    f"""
-<div style="display:flex; justify-content:center;">
+c1, c2, c3 = st.columns(3)
 
-<div style="
-background:#f7f8fa;
-padding:1px 5px;
-border-radius:10px;
-border:1px solid #e6e6e6;
-width:750px;
-">
+with c1:
+    st.write("👤 Name:", lead["name"])
+    st.write("📞 Phone:", lead["phone"])
+    st.write("📍 City:", lead["city"])
+    st.write("📝 Remarks:", lead["remarks"] if lead["remarks"] else "-")
 
-<div style="display:flex; justify-content:center; gap:60px; align-items:center;">
+with c2:
+    st.write("📊 Disposition:", lead["disposition"])
+    st.write("☎️ Call Status:", lead["call_status"])
+    st.write("👨 Assigned Caller:", lead["assigned_to"])
 
-<div style="text-align:center;">
-<div style="font-size:13px; color:#777;">Name</div>
-<div style="font-size:18px; font-weight:600;">👤 {lead['name']}</div>
-</div>
-
-<div style="text-align:center;">
-<div style="font-size:13px; color:#777;">Phone</div>
-<div style="font-size:16px;">📞 {lead['phone']}</div>
-</div>
-
-<div style="text-align:center;">
-<div style="font-size:13px; color:#777;">City</div>
-<div style="font-size:16px;">📍 {lead['city']}</div>
-</div>
-
-</div>
-
-</div>
-
-</div>
-""",
-    unsafe_allow_html=True,
-)
-
-# -------- EXPANDABLE DETAILS --------
-
-with st.expander("View More Details"):
-
-    c1, c2 = st.columns(2)
-
-    with c1:
-        st.write("📊 Call Status:", lead["call_status"])
-        st.write("📅 Meeting Date:", lead["meeting_date"])
-
-    with c2:
-        st.write("⚡ Disposition:", lead["disposition"])
-        st.write("⏳ Callback Date:", lead["callback_date"])
-
-    st.write("📝 Remarks:", lead["remarks"] if lead["remarks"] else "No remarks added")
-
+with c3:
+    st.write("📅 Callback Date:", lead["callback_date"])
+    st.write("📅 Meeting Date:", lead["meeting_date"])
+    st.write("🕒 Created:", lead["created_at"])
 # -------- TIMELINE --------
 
 if st.session_state.show_history:

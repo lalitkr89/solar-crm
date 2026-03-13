@@ -212,6 +212,7 @@ if st.button("Save Lead"):
             "assigned_to": None,
             "remarks": remarks,
             "created_at": datetime.now().isoformat(),
+            "lead_status": "open",
         }
 
         response = supabase.table("leads").upsert(data, on_conflict="phone").execute()
