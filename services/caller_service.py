@@ -6,11 +6,13 @@ import streamlit as st
 def get_active_callers(team="pre-sales"):
     """Get active callers for a team from users table"""
     try:
-        res = supabase.table("users")\
-            .select("id, name, role, team")\
-            .eq("team", team)\
-            .eq("is_active", True)\
+        res = (
+            supabase.table("users")
+            .select("id, name, role, team")
+            .eq("team", team)
+            .eq("is_active", True)
             .execute()
+        )
         return res.data if res.data else []
     except Exception:
         return []
@@ -23,6 +25,13 @@ def get_caller_names(team="pre-sales"):
     return [c["name"] for c in callers]
 
 
+@st.cache_data(ttl=60, show_spinner=False)
+def get_caller_id_map(team="pre-sales"):
+    """Get {name: uuid} map for resolving assigned_to"""
+    callers = get_active_callers(team)
+    return {c["name"]: c["id"] for c in callers}
+
+
 def get_next_caller_dynamic(team="pre-sales"):
     """Round-robin next caller"""
     try:
@@ -30,11 +39,13 @@ def get_next_caller_dynamic(team="pre-sales"):
         if not callers:
             return None
 
-        res = supabase.table("leads")\
-            .select("assigned_to")\
-            .order("created_at", desc=True)\
-            .limit(1)\
+        res = (
+            supabase.table("leads")
+            .select("assigned_to")
+            .order("created_at", desc=True)
+            .limit(1)
             .execute()
+        )
 
         if not res.data:
             return callers[0]
@@ -53,3 +64,4 @@ def get_next_caller_dynamic(team="pre-sales"):
 def clear_callers_cache():
     get_active_callers.clear()
     get_caller_names.clear()
+    get_caller_id_map.clear()

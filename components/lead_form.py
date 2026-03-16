@@ -4,7 +4,11 @@ from core.database import supabase
 from config.dispositions import not_connected_dispositions, connected_dispositions
 from config.time_slots import TIME_SLOTS
 from utils.phone_utils import clean_phone
-from services.caller_service import get_caller_names, get_next_caller_dynamic
+from services.caller_service import (
+    get_caller_names,
+    get_next_caller_dynamic,
+    get_caller_id_map,
+)
 from services.lead_service import save_lead, get_lead_by_phone
 
 LEAD_SOURCES = ["Referral", "Website", "Campaign", "Walk-in", "Cold Call", "Other"]
@@ -45,8 +49,10 @@ def _form_fragment():
     logged_in = st.session_state.get("user", {}).get("name", "")
     user_team = st.session_state.get("user", {}).get("team", "pre-sales")
     all_callers = get_caller_names(team=user_team)
+    caller_id_map = get_caller_id_map(team=user_team)
     if not all_callers:
         all_callers = get_caller_names()  # fallback — all teams
+        caller_id_map = get_caller_id_map()
 
     # Set defaults once — not on every rerun
     for k, v in {
@@ -414,7 +420,7 @@ def _form_fragment():
             "meeting_address": meeting_address,
             "callback_date": callback_date,
             "callback_slot": callback_slot,
-            "assigned_to": caller_val,
+            "assigned_to": caller_id_map.get(caller_val),
             "remarks": st.session_state.get("lf_rem", ""),
             "calling_date": datetime.now().date().isoformat(),
             "created_at": datetime.now().isoformat(),
