@@ -1,0 +1,6 @@
+streamlit
+pandas
+supabase
+python-dateutil
+streamlit-aggrid
+python-dotenv
